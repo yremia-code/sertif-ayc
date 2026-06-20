@@ -1,0 +1,77 @@
+/**
+ * Utility helper to manage the auto-incrementing ID counter.
+ * Uses kvdb.io for online cross-device synchronization and falls back
+ * to localStorage if offline or upon network failure.
+ */
+
+const LOCAL_STORAGE_PREFIX = 'sertif_ayc_counter_';
+
+/**
+ * Gets the current local counter value from localStorage.
+ */
+export function getLocalCounter(bucketId: string, keyName: string): number {
+  const key = `${LOCAL_STORAGE_PREFIX}${bucketId}_${keyName}`;
+  const stored = localStorage.getItem(key);
+  return stored ? parseInt(stored, 10) : 0;
+}
+
+/**
+ * Sets the local counter value in localStorage.
+ */
+export function setLocalCounter(bucketId: string, keyName: string, value: number): void {
+  const key = `${LOCAL_STORAGE_PREFIX}${bucketId}_${keyName}`;
+  localStorage.setItem(key, value.toString());
+}
+
+/**
+ * Increments the counter and returns the new value.
+ * @param bucketId kvdb.io bucket name
+ * @param keyName kvdb.io key name
+ * @param isOffline if true, forces local storage increment without network request
+ * @returns The new incremented counter value
+ */
+export async function incrementCounter(
+  bucketId: string,
+  keyName: string,
+  isOffline: boolean = false
+): Promise<{ value: number; isFallback: boolean }> {
+  if (isOffline) {
+    const current = getLocalCounter(bucketId, keyName);
+    const next = current + 1;
+    setLocalCounter(bucketId, keyName, next);
+    return { value: next, isFallback: true };
+  }
+
+  try {
+    const url = `https://kvdb.io/${bucketId}/${keyName}`;
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: '+1',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server returned status: ${response.status}`);
+    }
+
+    const text = await response.text();
+    const serverVal = parseInt(text.trim(), 10);
+
+    if (isNaN(serverVal)) {
+      throw new Error('Server returned an invalid number format');
+    }
+
+    // Keep local storage in sync with server value
+    setLocalCounter(bucketId, keyName, serverVal);
+    return { value: serverVal, isFallback: false };
+  } catch (error) {
+    console.warn('Failed to fetch from KVDB, falling back to localStorage counter:', error);
+    // Fallback to local storage increment
+    const current = getLocalCounter(bucketId, keyName);
+    const next = current + 1;
+    setLocalCounter(bucketId, keyName, next);
+    return { value: next, isFallback: true };
+  }
+}
