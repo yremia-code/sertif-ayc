@@ -389,7 +389,7 @@ export default function App() {
       // If online, set value on server by writing
       if (!settings.isOfflineMode) {
         try {
-          const url = `https://api.counterapi.dev/v1/${settings.bucketId}/${settings.counterKey}/set/?count=${parsed}`;
+          const url = `https://api.counterapi.dev/v1/${settings.bucketId}/${settings.counterKey}/set?count=${parsed}`;
           await fetch(url);
           alert(t.alertServerUpdated);
         } catch {
