@@ -75,3 +75,47 @@ export async function incrementCounter(
     return { value: next, isFallback: true };
   }
 }
+
+/**
+ * Fetches the current counter value from KVDB.io without incrementing it.
+ * Falls back to local storage value if offline or fails.
+ */
+export async function getRemoteCounter(
+  bucketId: string,
+  keyName: string,
+  isOffline: boolean = false
+): Promise<{ value: number; isFallback: boolean }> {
+  if (isOffline) {
+    return { value: getLocalCounter(bucketId, keyName), isFallback: true };
+  }
+
+  try {
+    const url = `https://kvdb.io/${bucketId}/${keyName}`;
+    const response = await fetch(url);
+
+    if (response.status === 404) {
+      // Key doesn't exist on server yet, return local value
+      const localVal = getLocalCounter(bucketId, keyName);
+      return { value: localVal, isFallback: false };
+    }
+
+    if (!response.ok) {
+      throw new Error(`Server returned status: ${response.status}`);
+    }
+
+    const text = await response.text();
+    const serverVal = parseInt(text.trim(), 10);
+
+    if (isNaN(serverVal)) {
+      throw new Error('Server returned an invalid number format');
+    }
+
+    // Update local storage to stay in sync with server
+    setLocalCounter(bucketId, keyName, serverVal);
+    return { value: serverVal, isFallback: false };
+  } catch (error) {
+    console.warn('Failed to fetch remote counter, using local value:', error);
+    return { value: getLocalCounter(bucketId, keyName), isFallback: true };
+  }
+}
+

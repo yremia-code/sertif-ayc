@@ -12,16 +12,13 @@ import {
   Languages,
   Eye
 } from 'lucide-react';
-import { incrementCounter, getLocalCounter, setLocalCounter } from './utils/kvdbHelper';
+import { incrementCounter, getLocalCounter, setLocalCounter, getRemoteCounter } from './utils/kvdbHelper';
 import { generateCertificateDataUrl, triggerDownload } from './utils/canvasHelper';
 import { ConfettiEffect } from './components/ConfettiEffect';
 
-// Helper to get dynamic prefix based on date (DDMM format)
+// Helper to get prefix
 const getDynamicPrefix = () => {
-  const now = new Date();
-  const day = String(now.getDate()).padStart(2, '0');
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  return `I-PWT-BTK-${day}${month}-`;
+  return 'AYC-PWT-BTK-';
 };
 
 const DEFAULT_SETTINGS = {
@@ -76,6 +73,99 @@ const getFormattedDate = (templateType: 'EN' | 'ID') => {
   }
 };
 
+const TRANSLATIONS = {
+  ID: {
+    appTitle: 'AYC Youth Booth',
+    appSubtitle: 'Membatik @ Youth Day 2026',
+    adminOpen: 'Tutup Pengaturan',
+    adminClosed: 'Pengaturan (Admin)',
+    nextId: 'ID Berikutnya:',
+    offlineMode: 'Mode Offline',
+    cloudCounter: 'Cloud Counter',
+    typeNameTitle: 'Ketik Nama Anda',
+    typeNameDesc: 'Ketikkan nama lengkap Anda di bawah ini. Kapitalisasi akan disesuaikan secara otomatis.',
+    fullNameLabel: 'Nama Lengkap',
+    inputPlaceholder: 'Contoh: Yeremia Ega',
+    fontStyleLabel: 'Gaya Huruf Nama:',
+    fontStyleValue: 'Italianno Script',
+    fontSizeLabel: 'Ukuran Nama',
+    downloadBtn: 'Download Sertifikat',
+    downloadingConnect: 'Menghubungkan ke server nomor ID...',
+    downloadingRender: 'Membuat sertifikat resolusi tinggi...',
+    downloadingTrigger: 'Mengunduh sertifikat...',
+    successTitle: 'Selesai!',
+    successDesc: 'Sertifikat berhasil diunduh ke perangkat Anda.',
+    registeredIdLabel: 'ID Terdaftar:',
+    createNewBtn: 'Buat Sertifikat Baru',
+    previewTitle: 'Preview Sertifikat:',
+    
+    // Calibration Panel
+    calibrationPanelTitle: 'Panel Kalibrasi',
+    offlineModeLabel: 'Mode Mandiri (Offline)',
+    offlineModeSub: 'Gunakan counter local tanpa server',
+    databaseSettingsTitle: 'Pengaturan Database',
+    bucketIdLabel: 'Bucket ID',
+    counterKeyLabel: 'Key Counter',
+    prefixIdLabel: 'Prefix ID',
+    digitCounterLabel: 'Digit Counter',
+    setServerCounterBtn: 'Setel Counter Server',
+    resetLocalBtn: 'Reset Lokal',
+    
+    // Alerts and prompts
+    alertEmptyName: 'Silakan masukkan nama lengkap Anda terlebih dahulu!',
+    alertError: 'Terjadi kesalahan saat memproses sertifikat. Coba aktifkan Mode Offline di pengaturan.',
+    confirmReset: 'Apakah Anda yakin ingin menyetel ulang counter lokal ke 0?',
+    promptServerCounter: 'Masukkan angka counter saat ini di server (atau kosongkan untuk batalkan):',
+    alertServerUpdated: 'Counter server berhasil diperbarui!',
+    alertServerFail: 'Gagal memperbarui counter di server. Nilai disimpan secara lokal.',
+  },
+  EN: {
+    appTitle: 'AYC Youth Booth',
+    appSubtitle: 'Batik Making @ Youth Day 2026',
+    adminOpen: 'Close Settings',
+    adminClosed: 'Settings (Admin)',
+    nextId: 'Next ID:',
+    offlineMode: 'Offline Mode',
+    cloudCounter: 'Cloud Counter',
+    typeNameTitle: 'Type Your Name',
+    typeNameDesc: 'Enter your full name below. Capitalization will be auto-adjusted.',
+    fullNameLabel: 'Full Name',
+    inputPlaceholder: 'e.g. Yeremia Ega',
+    fontStyleLabel: 'Name Font Style:',
+    fontStyleValue: 'Italianno Script',
+    fontSizeLabel: 'Name Size',
+    downloadBtn: 'Download Certificate',
+    downloadingConnect: 'Connecting to ID server...',
+    downloadingRender: 'Generating high-res certificate...',
+    downloadingTrigger: 'Downloading certificate...',
+    successTitle: 'Success!',
+    successDesc: 'Certificate successfully downloaded to your device.',
+    registeredIdLabel: 'Registered ID:',
+    createNewBtn: 'Create New Certificate',
+    previewTitle: 'Certificate Preview:',
+    
+    // Calibration Panel
+    calibrationPanelTitle: 'Calibration Panel',
+    offlineModeLabel: 'Standalone Mode (Offline)',
+    offlineModeSub: 'Use local counter without server',
+    databaseSettingsTitle: 'Database Settings',
+    bucketIdLabel: 'Bucket ID',
+    counterKeyLabel: 'Counter Key',
+    prefixIdLabel: 'ID Prefix',
+    digitCounterLabel: 'Counter Digits',
+    setServerCounterBtn: 'Set Server Counter',
+    resetLocalBtn: 'Reset Local',
+    
+    // Alerts and prompts
+    alertEmptyName: 'Please enter your full name first!',
+    alertError: 'An error occurred while processing the certificate. Try enabling Offline Mode in settings.',
+    confirmReset: 'Are you sure you want to reset the local counter to 0?',
+    promptServerCounter: 'Enter current server counter value (or leave blank to cancel):',
+    alertServerUpdated: 'Server counter updated successfully!',
+    alertServerFail: 'Failed to update server counter. Value saved locally.',
+  }
+};
+
 export default function App() {
   // Main states
   const [userName, setUserName] = useState('');
@@ -88,7 +178,7 @@ export default function App() {
   // Settings / Admin Panel state
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [settings, setSettings] = useState(() => {
-    const saved = localStorage.getItem('sertif_ayc_settings_v8');
+    const saved = localStorage.getItem('sertif_ayc_settings_v9');
     if (saved) {
       try {
         return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
@@ -98,6 +188,8 @@ export default function App() {
     }
     return DEFAULT_SETTINGS;
   });
+
+  const t = TRANSLATIONS[settings.templateType as 'ID' | 'EN'];
 
   const [localCounterVal, setLocalCounterVal] = useState(0);
 
@@ -116,12 +208,44 @@ export default function App() {
       }
     });
     observer.observe(containerRef.current);
-    
-    // Sync local counter state
-    setLocalCounterVal(getLocalCounter(settings.bucketId, settings.counterKey));
 
     return () => observer.disconnect();
-  }, [settings.bucketId, settings.counterKey]);
+  }, []);
+
+  // Sync and periodically poll the counter from remote server to prevent ID collisions in UI
+  useEffect(() => {
+    let active = true;
+
+    const syncCounter = async () => {
+      // Step 1: Immediately set local value for instant load
+      const localVal = getLocalCounter(settings.bucketId, settings.counterKey);
+      if (active) {
+        setLocalCounterVal(localVal);
+      }
+
+      // Step 2: Fetch current server value if online
+      if (settings.isOfflineMode) return;
+
+      try {
+        const result = await getRemoteCounter(settings.bucketId, settings.counterKey, false);
+        if (active && !result.isFallback) {
+          setLocalCounterVal(result.value);
+        }
+      } catch (err) {
+        console.warn('Failed to sync counter from server on load/poll:', err);
+      }
+    };
+
+    syncCounter();
+
+    // Poll every 10 seconds to keep concurrent devices in sync
+    const interval = setInterval(syncCounter, 10000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [settings.bucketId, settings.counterKey, settings.isOfflineMode]);
 
   // Save settings helper
   const updateSetting = <K extends keyof typeof DEFAULT_SETTINGS>(
@@ -130,15 +254,15 @@ export default function App() {
   ) => {
     setSettings((prev: typeof DEFAULT_SETTINGS) => {
       const updated = { ...prev, [key]: value };
-      localStorage.setItem('sertif_ayc_settings_v8', JSON.stringify(updated));
+      localStorage.setItem('sertif_ayc_settings_v9', JSON.stringify(updated));
       return updated;
     });
   };
 
   // Get current template path
   const templatePath = useMemo(() => {
-    return `/assets/${settings.designType} ${settings.templateType}.png`;
-  }, [settings.designType, settings.templateType]);
+    return `/assets/1 ${settings.templateType}.png`;
+  }, [settings.templateType]);
 
   // Format ID helper
   const formatId = useCallback((num: number) => {
@@ -168,13 +292,13 @@ export default function App() {
   // Download Handler
   const handleDownload = async () => {
     if (!userName.trim()) {
-      alert('Silakan masukkan nama lengkap Anda terlebih dahulu!');
+      alert(t.alertEmptyName);
       return;
     }
 
     setIsDownloading(true);
     setShowSuccess(false);
-    setDownloadStep('Menghubungkan ke server nomor ID...');
+    setDownloadStep(t.downloadingConnect);
 
     try {
       // 1. Fetch incremented ID
@@ -190,7 +314,7 @@ export default function App() {
       const generatedIdStr = formatId(result.value);
       setLastGeneratedId(generatedIdStr);
 
-      setDownloadStep('Membuat sertifikat resolusi tinggi...');
+      setDownloadStep(t.downloadingRender);
 
       // 2. Render on high-res canvas
       const canvas = canvasRef.current;
@@ -223,7 +347,7 @@ export default function App() {
         dateFontWeight: settings.dateFontWeight,
       });
 
-      setDownloadStep('Mengunduh sertifikat...');
+      setDownloadStep(t.downloadingTrigger);
 
       // 3. Trigger download
       const cleanFileName = `Sertifikat_${finalName.replace(/\s+/g, '_')}.png`;
@@ -235,14 +359,14 @@ export default function App() {
       setTriggerConfetti(true);
     } catch (err) {
       console.error(err);
-      alert('Terjadi kesalahan saat memproses sertifikat. Coba aktifkan Mode Offline di pengaturan.');
+      alert(t.alertError);
       setIsDownloading(false);
     }
   };
 
   // Reset local counter settings option
   const resetCounter = () => {
-    if (confirm('Apakah Anda yakin ingin menyetel ulang counter lokal ke 0?')) {
+    if (confirm(t.confirmReset)) {
       setLocalCounter(settings.bucketId, settings.counterKey, 0);
       setLocalCounterVal(0);
     }
@@ -250,7 +374,7 @@ export default function App() {
 
   // Sync manual counter offset
   const syncServerCounter = async () => {
-    const rawVal = prompt('Masukkan angka counter saat ini di server (atau kosongkan untuk batalkan):');
+    const rawVal = prompt(t.promptServerCounter);
     if (rawVal === null) return;
     const parsed = parseInt(rawVal, 10);
     if (!isNaN(parsed) && parsed >= 0) {
@@ -265,47 +389,47 @@ export default function App() {
             method: 'POST',
             body: String(parsed),
           });
-          alert('Counter server berhasil diperbarui!');
+          alert(t.alertServerUpdated);
         } catch {
-          alert('Gagal memperbarui counter di server. Nilai disimpan secara lokal.');
+          alert(t.alertServerFail);
         }
       }
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-glacial select-none antialiased">
-      {/* Background Gradient Decorative Dots */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/40 via-slate-900 to-slate-950 pointer-events-none z-0" />
+    <div className="min-h-screen bg-[#faf7f0] text-slate-800 flex flex-col font-glacial select-none antialiased bg-batik">
+      {/* Soft overlay gradient to emphasize center */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/30 via-transparent to-[#ebdcc5]/20 pointer-events-none z-0" />
 
       {/* Confetti Animation */}
       <ConfettiEffect active={triggerConfetti} onComplete={() => setTriggerConfetti(false)} />
 
       {/* TOP HEADER */}
-      <header className="relative z-10 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md px-6 py-4 flex items-center justify-between">
+      <header className="relative z-10 border-b border-[#e2cca9]/60 bg-white/60 backdrop-blur-md px-6 py-4 flex items-center justify-between shadow-sm shadow-[#451a03]/5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-400 to-indigo-600 flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-indigo-500/20">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#d97706] to-[#7c2d12] flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-[#b45309]/20">
             A
           </div>
           <div>
-            <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-400 to-indigo-300 bg-clip-text text-transparent m-0 leading-tight">
-              AYC Youth Booth
+            <h1 className="text-lg font-extrabold text-[#451a03] m-0 leading-tight tracking-wide">
+              {t.appTitle}
             </h1>
-            <p className="text-xs text-slate-400 font-medium">Batik Making @ Youth Day 2026</p>
+            <p className="text-xs text-[#9a3412] font-semibold">{t.appSubtitle}</p>
           </div>
         </div>
         
         <button
           onClick={() => setIsAdminOpen(!isAdminOpen)}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all border ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all border cursor-pointer ${
             isAdminOpen
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-              : 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 text-slate-300'
+              ? 'bg-[#c2410c]/10 border-[#c2410c]/30 text-[#c2410c]'
+              : 'bg-white/80 border-[#d4bca3] hover:bg-slate-50 text-[#7c2d12] shadow-sm'
           }`}
         >
           <Settings className="w-4 h-4" />
           <span className="hidden sm:inline">
-            {isAdminOpen ? 'Tutup Pengaturan' : 'Pengaturan (Admin)'}
+            {isAdminOpen ? t.adminOpen : t.adminClosed}
           </span>
         </button>
       </header>
@@ -317,49 +441,49 @@ export default function App() {
         <div className="lg:col-span-5 flex flex-col gap-6 w-full">
           
           {/* Status Indicator */}
-          <div className="flex items-center justify-between px-4 py-3 bg-slate-850 border border-slate-800/80 rounded-2xl text-xs font-semibold">
+          <div className="flex items-center justify-between px-4 py-3 bg-white/80 border border-[#e5d5be] rounded-2xl text-xs font-semibold shadow-sm">
             <div className="flex items-center gap-2">
-              <Database className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-slate-400">ID Berikutnya:</span>
-              <code className="text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+              <Database className="w-3.5 h-3.5 text-[#7c2d12]" />
+              <span className="text-[#451a03]">{t.nextId}</span>
+              <code className="text-[#c2410c] bg-[#c2410c]/5 px-2 py-0.5 rounded border border-[#c2410c]/20 font-bold">
                 {nextPreviewId}
               </code>
             </div>
-            <div className="flex items-center gap-1.5 text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+            <div className="flex items-center gap-1.5 text-[#c2410c] bg-[#c2410c]/5 px-2.5 py-0.5 rounded-full border border-[#c2410c]/20">
               {settings.isOfflineMode ? (
                 <>
-                  <WifiOff className="w-3 h-3 text-amber-400" />
-                  <span className="text-amber-400">Offline Mode</span>
+                  <WifiOff className="w-3 h-3 text-amber-600" />
+                  <span className="text-amber-700 font-bold">{t.offlineMode}</span>
                 </>
               ) : (
                 <>
-                  <Globe className="w-3 h-3" />
-                  <span>Cloud Counter</span>
+                  <Globe className="w-3 h-3 text-emerald-600" />
+                  <span className="text-emerald-700 font-bold">{t.cloudCounter}</span>
                 </>
               )}
             </div>
           </div>
 
           {!showSuccess ? (
-            <div className="bg-slate-800/40 border border-slate-700/40 rounded-3xl p-6 shadow-xl backdrop-blur-sm flex flex-col gap-6">
+            <div className="bg-white/80 border border-[#e5d5be] rounded-3xl p-6 shadow-xl shadow-[#b45309]/5 backdrop-blur-sm flex flex-col gap-6">
               <div className="flex flex-col gap-2">
-                <h2 className="text-xl font-bold text-slate-100">Ketik Nama Anda</h2>
-                <p className="text-sm text-slate-400">
-                  Ketikkan nama lengkap Anda di bawah ini. Kapitalisasi akan disesuaikan secara otomatis.
+                <h2 className="text-xl font-extrabold text-[#451a03]">{t.typeNameTitle}</h2>
+                <p className="text-sm text-slate-650 leading-relaxed">
+                  {t.typeNameDesc}
                 </p>
               </div>
 
               {/* Form Input */}
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Nama Lengkap
+                <label className="text-xs font-bold text-[#7c2d12] uppercase tracking-wider">
+                  {t.fullNameLabel}
                 </label>
                 <input
                   type="text"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  placeholder="Contoh: Yeremia Ega"
-                  className="w-full bg-slate-900/85 border border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-2xl px-5 py-4 text-lg font-medium text-slate-100 placeholder-slate-500 outline-none transition-all shadow-inner"
+                  placeholder={t.inputPlaceholder}
+                  className="w-full bg-[#fdfcf7] border border-[#d4bca3] focus:border-[#b45309] focus:ring-2 focus:ring-[#b45309]/20 rounded-2xl px-5 py-4 text-lg font-semibold text-[#451a03] placeholder-slate-400 outline-none transition-all shadow-inner"
                   disabled={isDownloading}
                 />
               </div>
@@ -369,64 +493,41 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => updateSetting('templateType', 'ID')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all ${
+                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all cursor-pointer active:scale-95 ${
                     settings.templateType === 'ID'
-                      ? 'bg-indigo-500/10 border-indigo-500/50 text-indigo-300'
-                      : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:text-slate-200'
+                      ? 'bg-[#b45309]/15 border-[#b45309]/50 text-[#7c2d12] font-extrabold shadow-sm'
+                      : 'bg-white border-[#e5d5be] text-slate-500 hover:text-slate-800 hover:bg-slate-50'
                   }`}
                 >
-                  <Languages className="w-5 h-5 mb-1.5" />
+                  <Languages className="w-5 h-5 mb-1.5 text-[#b45309]" />
                   <span className="text-xs font-bold">Bahasa Indonesia</span>
                 </button>
                 
                 <button
                   type="button"
                   onClick={() => updateSetting('templateType', 'EN')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all ${
+                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all cursor-pointer active:scale-95 ${
                     settings.templateType === 'EN'
-                      ? 'bg-indigo-500/10 border-indigo-500/50 text-indigo-300'
-                      : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:text-slate-200'
+                      ? 'bg-[#b45309]/15 border-[#b45309]/50 text-[#7c2d12] font-extrabold shadow-sm'
+                      : 'bg-white border-[#e5d5be] text-slate-500 hover:text-slate-800 hover:bg-slate-50'
                   }`}
                 >
-                  <Globe className="w-5 h-5 mb-1.5" />
+                  <Globe className="w-5 h-5 mb-1.5 text-[#b45309]" />
                   <span className="text-xs font-bold">English Version</span>
                 </button>
               </div>
 
-              {/* Pilih Desain Variasi */}
-              <div className="flex flex-col gap-2.5">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Pilih Desain Sertifikat
-                </label>
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none select-none">
-                  {[1, 2, 3, 4, 5, 6, 7].map((num) => (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => updateSetting('designType', num)}
-                      className={`flex-shrink-0 px-4.5 py-3 rounded-2xl border text-xs font-bold transition-all active:scale-95 cursor-pointer ${
-                        settings.designType === num
-                          ? 'bg-indigo-500/10 border-indigo-500/50 text-indigo-300 shadow-md shadow-indigo-500/10'
-                          : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      Desain {num}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Info Font */}
-              <div className="flex items-center justify-between p-3.5 bg-slate-900/40 border border-slate-800 rounded-2xl text-xs font-semibold">
-                <span className="text-slate-400">Gaya Huruf Nama:</span>
-                <span className="font-italianno text-2xl text-emerald-400">Italianno Script</span>
+              <div className="flex items-center justify-between p-3.5 bg-[#faf7f0]/60 border border-[#e5d5be] rounded-2xl text-xs font-semibold">
+                <span className="text-slate-500">{t.fontStyleLabel}</span>
+                <span className="font-italianno text-2xl text-[#b45309] font-bold">{t.fontStyleValue}</span>
               </div>
 
               {/* Slider Ukuran Huruf Nama */}
               <div className="flex flex-col gap-2">
-                <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  <span>Ukuran Nama</span>
-                  <span className="text-emerald-400 font-semibold">{settings.nameFontSize}px</span>
+                <div className="flex justify-between text-xs font-bold text-[#7c2d12] uppercase tracking-wider">
+                  <span>{t.fontSizeLabel}</span>
+                  <span className="text-[#b45309] font-extrabold">{settings.nameFontSize}px</span>
                 </div>
                 <input
                   type="range"
@@ -434,7 +535,7 @@ export default function App() {
                   max="400"
                   value={settings.nameFontSize}
                   onChange={(e) => updateSetting('nameFontSize', parseInt(e.target.value))}
-                  className="w-full accent-emerald-500 h-1.5 bg-slate-900 rounded-lg cursor-pointer"
+                  className="w-full accent-[#b45309] h-1.5 bg-slate-200 rounded-lg cursor-pointer"
                 />
               </div>
 
@@ -442,35 +543,35 @@ export default function App() {
               <button
                 onClick={handleDownload}
                 disabled={isDownloading || !userName.trim()}
-                className="w-full relative overflow-hidden group bg-gradient-to-r from-emerald-500 to-teal-600 disabled:from-slate-800 disabled:to-slate-800 text-slate-950 disabled:text-slate-500 font-extrabold text-base py-5 px-6 rounded-2xl shadow-xl shadow-emerald-500/10 hover:shadow-emerald-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 cursor-pointer disabled:cursor-not-allowed"
+                className="w-full relative overflow-hidden group bg-gradient-to-r from-[#d97706] to-[#b45309] disabled:from-slate-200 disabled:to-slate-200 text-white disabled:text-slate-400 font-extrabold text-base py-5 px-6 rounded-2xl shadow-xl shadow-[#b45309]/10 hover:shadow-[#b45309]/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 cursor-pointer disabled:cursor-not-allowed"
               >
                 {isDownloading ? (
                   <>
-                    <RefreshCw className="w-5 h-5 animate-spin text-slate-500" />
+                    <RefreshCw className="w-5 h-5 animate-spin text-slate-400" />
                     <span className="text-slate-400">{downloadStep}</span>
                   </>
                 ) : (
                   <>
-                    <Download className="w-5 h-5 text-slate-950 group-hover:-translate-y-0.5 transition-transform" />
-                    <span>Download Sertifikat</span>
+                    <Download className="w-5 h-5 text-white group-hover:-translate-y-0.5 transition-transform" />
+                    <span>{t.downloadBtn}</span>
                   </>
                 )}
               </button>
             </div>
           ) : (
             /* SUCCESS CARD */
-            <div className="bg-slate-800/60 border-2 border-emerald-500/30 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center gap-6 animate-fade-in-up">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <div className="bg-white/90 border-2 border-[#b45309]/30 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center gap-6 animate-fade-in-up">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600">
                 <CheckCircle2 className="w-10 h-10" />
               </div>
               <div className="flex flex-col gap-2">
-                <h2 className="text-2xl font-bold text-emerald-400">Selesai!</h2>
-                <p className="text-slate-200 text-sm font-semibold">
-                  Sertifikat berhasil diunduh ke perangkat Anda.
+                <h2 className="text-2xl font-extrabold text-emerald-700">{t.successTitle}</h2>
+                <p className="text-slate-700 text-sm font-semibold">
+                  {t.successDesc}
                 </p>
-                <div className="mt-3 p-3 bg-slate-900/60 rounded-xl border border-slate-700/50 text-xs">
-                  <div className="text-slate-400 mb-1">ID Terdaftar:</div>
-                  <code className="text-emerald-300 font-bold tracking-wider text-sm">{lastGeneratedId}</code>
+                <div className="mt-3 p-3 bg-[#faf7f0] rounded-xl border border-[#e5d5be] text-xs">
+                  <div className="text-slate-500 mb-1">{t.registeredIdLabel}</div>
+                  <code className="text-[#b45309] font-bold tracking-wider text-sm">{lastGeneratedId}</code>
                 </div>
               </div>
               
@@ -479,34 +580,34 @@ export default function App() {
                   setUserName('');
                   setShowSuccess(false);
                 }}
-                className="w-full bg-slate-700 hover:bg-slate-600 active:bg-slate-650 text-slate-200 font-bold py-4 px-6 rounded-2xl transition-all shadow-md"
+                className="w-full bg-[#faf7f0] border border-[#d4bca3] hover:bg-[#ebdcc5]/40 text-[#7c2d12] font-bold py-4 px-6 rounded-2xl transition-all shadow-md cursor-pointer"
               >
-                Buat Sertifikat Baru
+                {t.createNewBtn}
               </button>
             </div>
           )}
 
           {/* CALIBRATION / ADMIN CONTROLS IN SIDEBAR (ONLY SHOWN IF OPEN) */}
           {isAdminOpen && (
-            <div className="bg-slate-850 border border-slate-850 rounded-3xl p-5 flex flex-col gap-5 shadow-2xl">
+            <div className="bg-white border border-[#e5d5be] rounded-3xl p-5 flex flex-col gap-5 shadow-2xl">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-emerald-400">
-                  <Sliders className="w-4 h-4" />
-                  <span className="font-extrabold text-sm uppercase tracking-wider">Panel Kalibrasi</span>
+                <div className="flex items-center gap-2 text-[#7c2d12]">
+                  <Sliders className="w-4 h-4 text-[#b45309]" />
+                  <span className="font-extrabold text-sm uppercase tracking-wider">{t.calibrationPanelTitle}</span>
                 </div>
                 <button
                   onClick={() => setIsAdminOpen(false)}
-                  className="text-slate-400 hover:text-slate-200 p-1"
+                  className="text-slate-400 hover:text-[#7c2d12] p-1 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               {/* Mode Offline Switch */}
-              <div className="flex items-center justify-between p-3.5 bg-slate-900/50 border border-slate-800 rounded-2xl">
+              <div className="flex items-center justify-between p-3.5 bg-[#faf7f0]/60 border border-[#e5d5be] rounded-2xl">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-xs font-bold text-slate-300">Mode Mandiri (Offline)</span>
-                  <span className="text-[10px] text-slate-500">Gunakan counter local tanpa server</span>
+                  <span className="text-xs font-bold text-[#451a03]">{t.offlineModeLabel}</span>
+                  <span className="text-[10px] text-slate-500">{t.offlineModeSub}</span>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -515,67 +616,67 @@ export default function App() {
                     onChange={(e) => updateSetting('isOfflineMode', e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:height after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:height after:h-5 after:w-5 after:transition-all peer-checked:bg-[#b45309]"></div>
                 </label>
               </div>
 
               {/* Database and Key configurations */}
-              <div className="flex flex-col gap-3 bg-slate-900/30 p-3.5 border border-slate-800 rounded-2xl">
-                <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wide">Pengaturan Database</span>
+              <div className="flex flex-col gap-3 bg-[#faf7f0]/30 p-3.5 border border-[#e5d5be] rounded-2xl">
+                <span className="text-xs font-extrabold text-[#7c2d12] uppercase tracking-wide">{t.databaseSettingsTitle}</span>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Bucket ID</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">{t.bucketIdLabel}</label>
                     <input
                       type="text"
                       value={settings.bucketId}
                       onChange={(e) => updateSetting('bucketId', e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-300 focus:border-indigo-500 outline-none"
+                      className="bg-white border border-[#d4bca3] text-[#451a03] focus:border-[#b45309] rounded px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-[#b45309] outline-none"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Key Counter</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">{t.counterKeyLabel}</label>
                     <input
                       type="text"
                       value={settings.counterKey}
                       onChange={(e) => updateSetting('counterKey', e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-300 focus:border-indigo-500 outline-none"
+                      className="bg-white border border-[#d4bca3] text-[#451a03] focus:border-[#b45309] rounded px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-[#b45309] outline-none"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Prefix ID</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">{t.prefixIdLabel}</label>
                     <input
                       type="text"
                       value={settings.idPrefix}
                       onChange={(e) => updateSetting('idPrefix', e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-300 focus:border-indigo-500 outline-none"
+                      className="bg-white border border-[#d4bca3] text-[#451a03] focus:border-[#b45309] rounded px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-[#b45309] outline-none"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Digit Counter</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">{t.digitCounterLabel}</label>
                     <input
                       type="number"
                       value={settings.idDigits}
                       onChange={(e) => updateSetting('idDigits', parseInt(e.target.value) || 4)}
-                      className="bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-300 focus:border-indigo-500 outline-none"
+                      className="bg-white border border-[#d4bca3] text-[#451a03] focus:border-[#b45309] rounded px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-[#b45309] outline-none"
                     />
                   </div>
                 </div>
                 
                 {/* Counter Management */}
-                <div className="flex gap-2 mt-2 pt-2 border-t border-slate-800/80">
+                <div className="flex gap-2 mt-2 pt-2 border-t border-[#e5d5be]">
                   <button
                     onClick={syncServerCounter}
-                    className="flex-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs py-1.5 px-2.5 rounded hover:bg-indigo-500/20 transition-all font-bold"
+                    className="flex-1 bg-[#b45309]/10 border border-[#b45309]/20 text-[#7c2d12] text-xs py-1.5 px-2.5 rounded hover:bg-[#b45309]/20 transition-all font-bold cursor-pointer"
                   >
-                    Setel Counter Server
+                    {t.setServerCounterBtn}
                   </button>
                   <button
                     onClick={resetCounter}
-                    className="flex-1 bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs py-1.5 px-2.5 rounded hover:bg-rose-500/20 transition-all font-bold"
+                    className="flex-1 bg-rose-500/10 border border-rose-500/20 text-rose-700 text-xs py-1.5 px-2.5 rounded hover:bg-rose-500/20 transition-all font-bold cursor-pointer"
                   >
-                    Reset Lokal
+                    {t.resetLocalBtn}
                   </button>
                 </div>
               </div>
@@ -586,16 +687,15 @@ export default function App() {
 
         {/* RIGHT COLUMN: PREVIEW SCREEN */}
         <div className="lg:col-span-7 flex flex-col gap-4 w-full">
-          <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold px-2">
-            <Eye className="w-3.5 h-3.5 text-slate-500" />
-            <span>Preview Sertifikat:</span>
-            {/* Help guidelines deleted */}
+          <div className="flex items-center gap-2 text-[#7c2d12] text-xs font-semibold px-2">
+            <Eye className="w-3.5 h-3.5 text-[#b45309]" />
+            <span>{t.previewTitle}</span>
           </div>
 
           {/* DRAGGABLE PREVIEW WRAPPER */}
           <div
             ref={containerRef}
-            className="relative border border-slate-700/60 rounded-3xl overflow-hidden bg-slate-950 aspect-[5000/3535] w-full shadow-2xl flex items-center justify-center"
+            className="relative border border-[#d4bca3] rounded-3xl overflow-hidden bg-[#efeae2] aspect-[5000/3535] w-full shadow-2xl flex items-center justify-center shadow-[#b45309]/5"
           >
             {/* The Certificate Image */}
             <img
@@ -617,7 +717,7 @@ export default function App() {
               }}
               className="absolute whitespace-nowrap text-center select-none pointer-events-none"
             >
-              {displayName || 'Ketik Nama Anda'}
+              {displayName || (settings.templateType === 'EN' ? 'Type Your Name' : 'Ketik Nama Anda')}
             </div>
 
             {/* ID Preview Overlay */}

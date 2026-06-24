@@ -41,3 +41,11 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(156, 163, 175, 0.5);
 }
+
+/* Elegant traditional Javanese Batik Kawung pattern background */
+.bg-batik {
+  background-color: #faf7f0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cpath d='M30 0C30 16.569 16.569 30 0 30C16.569 30 30 43.431 30 60C30 43.431 43.431 30 60 30C43.431 30 30 16.569 30 0Z' fill='%237c2d12' fill-opacity='0.035'/%3E%3C/svg%3E");
+  background-attachment: fixed;
+}
+
