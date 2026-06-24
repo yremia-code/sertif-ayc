@@ -108,6 +108,7 @@ const TRANSLATIONS = {
     counterKeyLabel: 'Key Counter',
     prefixIdLabel: 'Prefix ID',
     digitCounterLabel: 'Digit Counter',
+    counterOffsetLabel: 'Offset ID (Mulai Dari)',
     setServerCounterBtn: 'Setel Counter Server',
     resetLocalBtn: 'Reset Lokal',
     
@@ -153,6 +154,7 @@ const TRANSLATIONS = {
     counterKeyLabel: 'Counter Key',
     prefixIdLabel: 'ID Prefix',
     digitCounterLabel: 'Counter Digits',
+    counterOffsetLabel: 'ID Offset (Start From)',
     setServerCounterBtn: 'Set Server Counter',
     resetLocalBtn: 'Reset Local',
     
@@ -384,11 +386,8 @@ export default function App() {
       // If online, set value on server by writing
       if (!settings.isOfflineMode) {
         try {
-          const url = `https://kvdb.io/${settings.bucketId}/${settings.counterKey}`;
-          await fetch(url, {
-            method: 'POST',
-            body: String(parsed),
-          });
+          const url = `https://api.counterapi.dev/v1/${settings.bucketId}/${settings.counterKey}/set?count=${parsed}`;
+          await fetch(url);
           alert(t.alertServerUpdated);
         } catch {
           alert(t.alertServerFail);
@@ -643,7 +642,7 @@ export default function App() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase">{t.prefixIdLabel}</label>
                     <input
@@ -659,6 +658,15 @@ export default function App() {
                       type="number"
                       value={settings.idDigits}
                       onChange={(e) => updateSetting('idDigits', parseInt(e.target.value) || 4)}
+                      className="bg-white border border-[#d4bca3] text-[#451a03] focus:border-[#b45309] rounded px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-[#b45309] outline-none"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">{t.counterOffsetLabel}</label>
+                    <input
+                      type="number"
+                      value={settings.counterOffset}
+                      onChange={(e) => updateSetting('counterOffset', parseInt(e.target.value) || 1)}
                       className="bg-white border border-[#d4bca3] text-[#451a03] focus:border-[#b45309] rounded px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-[#b45309] outline-none"
                     />
                   </div>

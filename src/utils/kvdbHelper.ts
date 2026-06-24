@@ -25,8 +25,8 @@ export function setLocalCounter(bucketId: string, keyName: string, value: number
 
 /**
  * Increments the counter and returns the new value.
- * @param bucketId kvdb.io bucket name
- * @param keyName kvdb.io key name
+ * @param bucketId CounterAPI namespace
+ * @param keyName CounterAPI key name
  * @param isOffline if true, forces local storage increment without network request
  * @returns The new incremented counter value
  */
@@ -43,21 +43,15 @@ export async function incrementCounter(
   }
 
   try {
-    const url = `https://kvdb.io/${bucketId}/${keyName}`;
-    const response = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: '+1',
-    });
+    const url = `https://api.counterapi.dev/v1/${bucketId}/${keyName}/up`;
+    const response = await fetch(url);
 
     if (!response.ok) {
       throw new Error(`Server returned status: ${response.status}`);
     }
 
-    const text = await response.text();
-    const serverVal = parseInt(text.trim(), 10);
+    const data = await response.json();
+    const serverVal = parseInt(data.count, 10);
 
     if (isNaN(serverVal)) {
       throw new Error('Server returned an invalid number format');
@@ -67,7 +61,7 @@ export async function incrementCounter(
     setLocalCounter(bucketId, keyName, serverVal);
     return { value: serverVal, isFallback: false };
   } catch (error) {
-    console.warn('Failed to fetch from KVDB, falling back to localStorage counter:', error);
+    console.warn('Failed to fetch from CounterAPI, falling back to localStorage counter:', error);
     // Fallback to local storage increment
     const current = getLocalCounter(bucketId, keyName);
     const next = current + 1;
@@ -77,7 +71,7 @@ export async function incrementCounter(
 }
 
 /**
- * Fetches the current counter value from KVDB.io without incrementing it.
+ * Fetches the current counter value from CounterAPI without incrementing it.
  * Falls back to local storage value if offline or fails.
  */
 export async function getRemoteCounter(
@@ -90,7 +84,7 @@ export async function getRemoteCounter(
   }
 
   try {
-    const url = `https://kvdb.io/${bucketId}/${keyName}`;
+    const url = `https://api.counterapi.dev/v1/${bucketId}/${keyName}`;
     const response = await fetch(url);
 
     if (response.status === 404) {
@@ -103,8 +97,8 @@ export async function getRemoteCounter(
       throw new Error(`Server returned status: ${response.status}`);
     }
 
-    const text = await response.text();
-    const serverVal = parseInt(text.trim(), 10);
+    const data = await response.json();
+    const serverVal = parseInt(data.count, 10);
 
     if (isNaN(serverVal)) {
       throw new Error('Server returned an invalid number format');
@@ -118,4 +112,5 @@ export async function getRemoteCounter(
     return { value: getLocalCounter(bucketId, keyName), isFallback: true };
   }
 }
+
 
