@@ -84,7 +84,7 @@ export async function getRemoteCounter(
   }
 
   try {
-    const url = `https://api.counterapi.dev/v1/${bucketId}/${keyName}`;
+    const url = `https://api.counterapi.dev/v1/${bucketId}/${keyName}/`;
     const response = await fetch(url);
 
     if (response.status === 404) {
