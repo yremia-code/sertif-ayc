@@ -671,7 +671,7 @@ export default function App() {
                       value={settings.counterOffset}
                       onChange={(e) => {
                         const val = parseInt(e.target.value, 10);
-                        updateSetting('counterOffset', isNaN(val) ? 1 : val);
+                        updateSetting('counterOffset', isNaN(val) ? 0 : val);
                       }}
                       className="bg-white border border-[#d4bca3] text-[#451a03] focus:border-[#b45309] rounded px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-[#b45309] outline-none"
                     />
