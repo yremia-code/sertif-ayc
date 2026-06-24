@@ -98,6 +98,7 @@ const TRANSLATIONS = {
     registeredIdLabel: 'ID Terdaftar:',
     createNewBtn: 'Buat Sertifikat Baru',
     previewTitle: 'Preview Sertifikat:',
+    downloadFileNamePrefix: 'sertifikat_membatik_ayc_',
     
     // Calibration Panel
     calibrationPanelTitle: 'Panel Kalibrasi',
@@ -144,6 +145,7 @@ const TRANSLATIONS = {
     registeredIdLabel: 'Registered ID:',
     createNewBtn: 'Create New Certificate',
     previewTitle: 'Certificate Preview:',
+    downloadFileNamePrefix: 'certificate_batik_making_ayc_',
     
     // Calibration Panel
     calibrationPanelTitle: 'Calibration Panel',
@@ -352,7 +354,8 @@ export default function App() {
       setDownloadStep(t.downloadingTrigger);
 
       // 3. Trigger download
-      const cleanFileName = `Sertifikat_${finalName.replace(/\s+/g, '_')}.png`;
+      const cleanName = finalName.toLowerCase().replace(/\s+/g, '_');
+      const cleanFileName = `${t.downloadFileNamePrefix}${cleanName}.png`;
       triggerDownload(dataUrl, cleanFileName);
 
       // 4. Success state
@@ -386,7 +389,7 @@ export default function App() {
       // If online, set value on server by writing
       if (!settings.isOfflineMode) {
         try {
-          const url = `https://api.counterapi.dev/v1/${settings.bucketId}/${settings.counterKey}/set?count=${parsed}`;
+          const url = `https://api.counterapi.dev/v1/${settings.bucketId}/${settings.counterKey}/set/?count=${parsed}`;
           await fetch(url);
           alert(t.alertServerUpdated);
         } catch {
