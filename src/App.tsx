@@ -669,7 +669,10 @@ export default function App() {
                     <input
                       type="number"
                       value={settings.counterOffset}
-                      onChange={(e) => updateSetting('counterOffset', parseInt(e.target.value) || 1)}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        updateSetting('counterOffset', isNaN(val) ? 1 : val);
+                      }}
                       className="bg-white border border-[#d4bca3] text-[#451a03] focus:border-[#b45309] rounded px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-[#b45309] outline-none"
                     />
                   </div>
